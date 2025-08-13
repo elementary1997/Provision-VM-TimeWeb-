@@ -1,0 +1,5 @@
+---
+username: common
+group: www-data
+shell: /bin/bash
+authorized_key: "[public-ssh-keys]"

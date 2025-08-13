@@ -1,0 +1,95 @@
+---
+- name: Ensure group exists
+  group:
+    name: "{{ group }}"
+    state: present
+
+- name: Generate password for common
+  ansible.builtin.set_fact:
+    passwd_user: "{{ lookup('ansible.builtin.password', '/dev/null', chars=['ascii_lowercase', 'ascii_uppercase', 'digits'], length=15) }}"
+
+- name: Generate hashed password for user
+  ansible.builtin.set_fact:
+    passwd_user_hashed: "{{ passwd_user | password_hash('sha512') }}"
+
+- name: Create user with home directory, shell, group, and set password
+  user:
+    name: "{{ username }}"
+    group: "{{ group }}"
+    shell: "{{ shell }}"
+    create_home: yes
+    password: "{{ passwd_user_hashed }}"
+    state: present
+
+- name: Add user "common" to sudoers
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/sudoers.d/common
+    content: "common ALL=(ALL:ALL) ALL\n"
+    owner: root
+    group: root
+    mode: '0440'
+
+- name: Ensure .ssh directory exists
+  file:
+    path: "/home/{{ username }}/.ssh"
+    state: directory
+    owner: "{{ username }}"
+    group: "{{ group }}"
+    mode: '0700'
+
+- name: Ensure authorized_keys file exists
+  file:
+    path: "/home/{{ username }}/.ssh/authorized_keys"
+    state: touch
+    owner: "{{ username }}"
+    group: "{{ group }}"
+    mode: '0600'
+
+- name: Set authorized_key for user
+  authorized_key:
+    user: "{{ username }}"
+    state: present
+    key: "{{ authorized_key }}"
+
+- name: Disable root login via SSH
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^PermitRootLogin\s+'
+    line: 'PermitRootLogin no'
+    state: present
+    backup: yes
+
+- name: Disable password authentication
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^PasswordAuthentication\s+'
+    line: 'PasswordAuthentication no'
+    state: present
+    backup: yes
+
+- name: Enable public key authentication
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^PubkeyAuthentication\s+'
+    line: 'PubkeyAuthentication yes'
+    state: present
+    backup: yes
+
+- name: Allow only the user 'common' to login
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^AllowUsers\s+'
+    line: 'AllowUsers common'
+    state: present
+    backup: yes
+
+- name: Restart sshd
+  service:
+    name: sshd
+    state: restarted
+
+- name: Show generated password for user common
+  debug:
+    msg: "Generated password for user {{ username }}: {{ passwd_user }}"
+

@@ -1,0 +1,19 @@
+---
+- hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: Add dynamic host with IP
+      add_host:
+        name: "{{ target_host }}"
+        ansible_host: "{{ ansible_host }}"
+
+- name: Create user and ssh configuration
+  hosts: "{{ target_host }}"
+  become: true
+  vars_files: 
+    - vars.yml
+  tasks:
+    - import_tasks: ssh_configuration.yml
+    - import_tasks: ufw_configuration.yml
+    - import_tasks: python_configuration.yml
+    - import_tasks: services_configuration.yml

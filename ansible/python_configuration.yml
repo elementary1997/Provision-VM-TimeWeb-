@@ -1,0 +1,35 @@
+---
+- name: Update package list
+  apt:
+    update_cache: yes
+
+- name: Install software-properties-common
+  apt:
+    name: software-properties-common
+    state: present
+
+- name: Add Deadsnakes PPA
+  apt_repository:
+    repo: ppa:deadsnakes/ppa
+
+- name: Update package list after adding PPA
+  apt:
+    update_cache: yes
+
+- name: Install Python 3.12 and venv
+  apt:
+    name:
+      - python3.12
+      - python3.12-venv
+    state: present
+
+- name: Download get-pip.py
+  get_url:
+    url: https://bootstrap.pypa.io/get-pip.py
+    dest: /tmp/get-pip.py
+    mode: '0644'
+
+- name: Install pip for Python 3.12
+  command: python3.12 /tmp/get-pip.py
+  args:
+    creates: /usr/local/bin/pip3.12
